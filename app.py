@@ -15,6 +15,7 @@ server = app.server
 # find better way to do this, eg a daily update on the server instead of doing it every time
 lb = numerapi.NumerAPI().get_leaderboard(99999)
 models = [x['username'] for x in lb]
+currencies = ['GBP', 'EUR', 'USD']
 
 today = datetime.now()
 
@@ -24,6 +25,11 @@ app.layout = html.Div([html.H1('Numerai Payouts Dashboard'),
                                         dcc.Dropdown(id='model-picker',
                                             options=[{'label': m, 'value': m} for m in models],
                                             multi=True)],
+                                style={'verticalAlign': 'top', 'width': '30%', 'display': 'inline-block'}),
+                            html.Div([html.H2('Select currency:'),
+                                        dcc.Dropdown(id='currency-picker',
+                                            options=[{'label': c, 'value': c} for c in currencies],
+                                            multi=False)],
                                 style={'verticalAlign': 'top', 'width': '30%', 'display': 'inline-block'}),
                             html.Div([html.H2('Select start and end dates:'),
                                         dcc.DatePickerRange(id='date-picker',
@@ -49,9 +55,10 @@ app.layout = html.Div([html.H1('Numerai Payouts Dashboard'),
                 Output('table', 'data'),
                 [Input('submit-button', 'n_clicks')],
                 [State('model-picker', 'value'),
+                State('currency-picker', 'value'),
                 State('date-picker', 'start_date'),
                 State('date-picker', 'end_date')])
-def get_total(n_clicks, model_list, start, end):
+def calculate_payouts(n_clicks, model_list, currency, start, end):
 
     if model_list is None:
         return 0
@@ -67,17 +74,14 @@ def get_total(n_clicks, model_list, start, end):
     df = pd.concat(to_concat)
 
     mapper = {
-       'model': 'Model', 'roundNumber': 'Round', 'payout': 'Payout', 'roundPayoutFactor': 'Payout Factor',
-       'roundResolveTime': 'Round Resolved',
-       'selectedStakeValue': 'Stake'}
+       'model': 'Model', 'roundNumber': 'Round', 'payout': 'NMR Payout', 'roundResolveTime': 'Round Resolved'}
 
     # select and rename columns
     df = df[[key for key in mapper]].rename(mapper, axis=1)
 
     # drop nans from payout
-    df = df.dropna(subset = ['Payout'])
-    df['Payout'] = df['Payout'].astype('float64')
-    total_nmr = df['Payout'].sum()
+    df = df.dropna(subset = ['NMR Payout'])
+    df['NMR Payout'] = df['NMR Payout'].astype('float64')
 
     # set time to midnight and remove local time zone
     df['Round Resolved'] = df['Round Resolved'].apply(lambda x: x.replace(hour=0, minute=0, second=0))
@@ -88,23 +92,31 @@ def get_total(n_clicks, model_list, start, end):
     end = datetime.fromisoformat(end)
     df = df[(df['Round Resolved'] >= start) & (df['Round Resolved'] <= end)]
 
-    # gbp data
+    # currency data
     epoch_start = int(start.timestamp())
     epoch_end = int(end.timestamp())
 
-    url = f"https://query1.finance.yahoo.com/v7/finance/download/NMR-GBP?period1={epoch_start}&period2={epoch_end}&interval=1d&events=history&includeAdjustedClose=true"
+    url = f"https://query1.finance.yahoo.com/v7/finance/download/NMR-{currency}?period1={epoch_start}&period2={epoch_end}&interval=1d&events=history&includeAdjustedClose=true"
     headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
     response = requests.get(url, headers=headers)
-    gbp = pd.read_csv(io.StringIO(response.content.decode('utf-8')), parse_dates=['Date'])
-    gbp = gbp[['Date', 'Close']]
+    curr = pd.read_csv(io.StringIO(response.content.decode('utf-8')), parse_dates=['Date'])
+    curr = curr[['Date', 'Close']]
 
     # merge together
-    df = df.merge(gbp, how='left', left_on='Round Resolved', right_on='Date')
-    df['GBP Payout'] = df['Payout'] * df['Close']
-    total_gbp = df['GBP Payout'].sum()
+    df = df.merge(curr, how='left', left_on='Round Resolved', right_on='Date')
+    df = df.drop(columns='Date')
+    df['Round Resolved'] = df['Round Resolved'].apply(lambda x: x.date())
+    df = df.rename({'Close': f'{currency}/NMR'}, axis=1)
+    df[f'{currency} Payout'] = df['NMR Payout'] * df[f'{currency}/NMR']
 
-    return f"NMR: {total_nmr}\nGBP: {total_gbp}", df.to_dict('records')
+    for col in ['NMR Payout', f'{currency}/NMR', f'{currency} Payout']:
+        df[col] = df[col].apply(lambda x: round(x, 2))
+
+    total_nmr = round(df['NMR Payout'].sum(), 2)
+    total_curr = round(df[f'{currency} Payout'].sum(), 2)
+
+    return f"NMR: {total_nmr}\n{currency}: {total_curr}", df.to_dict('records')
 
 if __name__ == '__main__':
     app.run_server()
