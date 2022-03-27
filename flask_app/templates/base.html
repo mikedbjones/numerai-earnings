@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  {% block meta %}
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% endblock %}
+    <title>{% block title %}Numerai Payouts{% endblock %}</title>
+  {% block styles %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" />
+  {% endblock %}
+</head>
+
+<body>
+        <nav class="navbar is-primary">
+            <div class="container">
+                <div class="navbar-brand">
+                  <a href="/" class="navbar-item is-size-4">
+                    Numerai Payouts
+                  </a>
+                </div>
+                <div id="navbarMenuHeroA" class="navbar-menu">
+                    <div class="navbar-end">
+                        <a href="https://github.com/mikedbjones/numerai-payouts" class="navbar-item">
+                            Github
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    <section class="section has-background-primary-light">
+      {% block content %}
+      {% endblock %}
+    </section>
+    {% block scripts %}
+    {% endblock %}
+    <footer class="footer">
+    <div class="content">
+      <p>
+        Not an official product of <a href="https://numer.ai">numerai</a>. Provided without warranty under MIT license. &copy; Mike Jones 2022
+      </p>
+    </div>
+  </footer>
+</body>
+
+</html>
