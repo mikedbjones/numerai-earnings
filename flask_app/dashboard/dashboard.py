@@ -69,7 +69,8 @@ def init_dashboard(server):
                                                 className='columns is-centered'),
                                 html.Div(dcc.Graph(id='graph'), className='block'),
                                 html.Div(dash_table.DataTable(
-                                                                id='table'), className='block')
+                                                                id='table',
+                                                                sort_action='native'), className='block')
                                 # html.Div([
                                 #             html.Button('Download CSV', id='download-button', className='button is-fullwidth'),
                                 #             dcc.Download(id='download-df')], className='block')
