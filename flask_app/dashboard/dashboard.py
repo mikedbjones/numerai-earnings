@@ -69,10 +69,10 @@ def init_dashboard(server):
                                                 className='columns is-centered'),
                                 html.Div(dcc.Graph(id='graph'), className='block'),
                                 html.Div(dash_table.DataTable(
-                                                                id='table'), className='block'),
-                                html.Div([
-                                            html.Button('Download CSV', id='download-button', className='button is-fullwidth'),
-                                            dcc.Download(id='download-df')], className='block')
+                                                                id='table'), className='block')
+                                # html.Div([
+                                #             html.Button('Download CSV', id='download-button', className='button is-fullwidth'),
+                                #             dcc.Download(id='download-df')], className='block')
                                                         ])
 
     @app.callback(
@@ -155,13 +155,14 @@ def init_dashboard(server):
         else:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-    @app.callback(
-                    Output('download-df', 'data'),
-                    Input('download-button', 'n_clicks'))
-    def download_csv(n_clicks):
-        if n_clicks is not None:
-            return dcc.send_data_frame(df.to_csv, 'data.csv')
-        else:
-            return None
+    # disabled due to issue with Heroku free dynos
+    # @app.callback(
+    #                 Output('download-df', 'data'),
+    #                 Input('download-button', 'n_clicks'))
+    # def download_csv(n_clicks):
+    #     if n_clicks is not None:
+    #         return dcc.send_data_frame(df.to_csv, 'data.csv')
+    #     else:
+    #         return None
 
     return app.server
