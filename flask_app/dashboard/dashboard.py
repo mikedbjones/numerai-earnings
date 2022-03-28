@@ -14,10 +14,20 @@ def init_dashboard(server):
     app = Dash(server=server)
 
     # get models
-    # find better way to do this, eg a daily update on the server instead of doing it every time
-    lb = numerapi.NumerAPI().get_leaderboard(99999)
-    models = [x['username'] for x in lb]
+    models = []
+    for lb in ['v2Leaderboard']: # to do: add signalsLeaderboard
+        qry = f'''
+                query {{
+                  {lb} {{
+                    username
+                  }}
+                }}
+                '''
+        usernames = numerapi.NumerAPI().raw_query(qry)['data'][lb]
+        models += [x['username'] for x in usernames]
+
     models.sort()
+
     currencies = ['AUD', 'CAD', 'EUR', 'GBP', 'USD']
 
     today = datetime.now()
