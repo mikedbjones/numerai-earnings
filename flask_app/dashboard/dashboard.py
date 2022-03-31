@@ -8,6 +8,7 @@ import numerapi
 import requests
 import io
 from .dash import Dash
+import json
 
 def init_dashboard(server):
 
@@ -49,6 +50,7 @@ def init_dashboard(server):
                                 html.Div([
                                             dcc.DatePickerRange(id='date-picker',
                                                 initial_visible_month=today,
+                                                end_date=today,
                                                 display_format='DD-MM-YYYY')],
                                     className='column'),
                                 html.Div([html.Button(id='submit-button',
@@ -70,10 +72,11 @@ def init_dashboard(server):
                                 html.Div(dcc.Graph(id='graph'), className='block'),
                                 html.Div(dash_table.DataTable(
                                                                 id='table',
-                                                                sort_action='native'), className='block')
-                                # html.Div([
-                                #             html.Button('Download CSV', id='download-button', className='button is-fullwidth'),
-                                #             dcc.Download(id='download-df')], className='block')
+                                                                sort_action='native'), className='block'),
+                                html.Div([
+                                            html.Button('Download CSV', id='download-button', className='button is-fullwidth'),
+                                            dcc.Download(id='download-df')], className='block'),
+                                            dcc.Store(id='user-df')
                                                         ])
 
     @app.callback(
@@ -81,6 +84,7 @@ def init_dashboard(server):
                     Output('total-display-curr', 'children'),
                     Output('graph', 'figure'),
                     Output('table', 'data'),
+                    Output('user-df', 'data'),
                     Input('submit-button', 'n_clicks'),
                     State('model-picker', 'value'),
                     State('currency-picker', 'value'),
@@ -94,7 +98,6 @@ def init_dashboard(server):
             napi = numerapi.NumerAPI()
             to_concat = []
             for model in model_list:
-                global df # so df can be accessed outside function
                 df = pd.DataFrame(napi.round_model_performances(model))
                 df['model'] = model
                 to_concat.append(df)
@@ -151,19 +154,19 @@ def init_dashboard(server):
             figure = {'data': data,
                         'layout': go.Layout(title=f'{currency} Payout', hovermode='closest')}
 
-            return f"NMR: {total_nmr}", f"{currency}: {total_curr}", figure, df.to_dict('records')
+            return f"NMR: {total_nmr}", f"{currency}: {total_curr}", figure, df.to_dict('records'), df.to_json(date_format='iso', orient='split')
 
         else:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-    # disabled due to issue with Heroku free dynos
-    # @app.callback(
-    #                 Output('download-df', 'data'),
-    #                 Input('download-button', 'n_clicks'))
-    # def download_csv(n_clicks):
-    #     if n_clicks is not None:
-    #         return dcc.send_data_frame(df.to_csv, 'data.csv')
-    #     else:
-    #         return None
+    @app.callback(
+                    Output('download-df', 'data'),
+                    Input('download-button', 'n_clicks'),
+                    State('user-df', 'data'))
+    def download_csv(n_clicks, df_json):
+        if n_clicks is not None:
+            return dcc.send_data_frame(pd.read_json(df_json, orient='split').to_csv, 'data.csv')
+        else:
+            return None
 
     return app.server
