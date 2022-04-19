@@ -141,11 +141,13 @@ def init_dashboard(server):
             df = df.rename({'Close': f'{currency}/NMR'}, axis=1)
             df[f'{currency} Payout'] = df['NMR Payout'] * df[f'{currency}/NMR']
 
-            for col in ['NMR Payout', f'{currency}/NMR', f'{currency} Payout']:
-                df[col] = df[col].apply(lambda x: round(x, 2))
+            total_nmr = f"{round(df['NMR Payout'].sum(), 4):.4f}"
+            total_curr = f"{round(df[f'{currency} Payout'].sum(), 2):.2f}"
 
-            total_nmr = round(df['NMR Payout'].sum(), 2)
-            total_curr = round(df[f'{currency} Payout'].sum(), 2)
+            df['NMR Payout'] = df['NMR Payout'].apply(lambda x: f"{round(x, 4):.4f}")
+
+            for col in [f'{currency}/NMR', f'{currency} Payout']:
+                df[col] = df[col].apply(lambda x: f"{round(x, 2):.2f}")
 
             data = [go.Scatter(x=df[df['Model'] == m]['Round Resolved'],
                                 y=df[df['Model'] == m][f'{currency} Payout'],
@@ -165,7 +167,7 @@ def init_dashboard(server):
                     State('user-df', 'data'))
     def download_csv(n_clicks, df_json):
         if n_clicks is not None:
-            return dcc.send_data_frame(pd.read_json(df_json, orient='split').to_csv, 'data.csv')
+            return dcc.send_data_frame(pd.read_json(df_json, orient='split').to_csv, 'data.csv', index=False)
         else:
             return None
 
