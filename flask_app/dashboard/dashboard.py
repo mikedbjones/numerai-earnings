@@ -15,19 +15,25 @@ def init_dashboard(server):
     app = Dash(server=server)
 
     # get models
-    models = []
-    for lb in ['v2Leaderboard']: # to do: add signalsLeaderboard
-        qry = f'''
-                query {{
-                  {lb} {{
-                    username
-                  }}
-                }}
-                '''
-        usernames = numerapi.NumerAPI().raw_query(qry)['data'][lb]
-        models += [x['username'] for x in usernames]
+    numerai_models = []
+    signals_models = []
 
-    models.sort()
+    for lb in ['v2Leaderboard', 'signalsLeaderboard']:
+            qry = f'''
+                    query {{
+                      {lb} {{
+                        username
+                      }}
+                    }}
+                    '''
+            usernames = numerapi.NumerAPI().raw_query(qry)['data'][lb]
+            if lb == 'v2Leaderboard':
+                numerai_models = [x['username'] for x in usernames]
+            elif lb == 'signalsLeaderboard':
+                signals_models = [x['username'] for x in usernames]
+
+    numerai_models.sort()
+    signals_models.sort()
 
     currencies = ['AUD', 'CAD', 'EUR', 'GBP', 'USD']
 
@@ -36,10 +42,14 @@ def init_dashboard(server):
     app.layout = html.Div([
                             html.Div([
                                 html.Div([
-                                            dcc.Dropdown(id='model-picker',
-                                                options=[{'label': m, 'value': m} for m in models],
+                                            dcc.Dropdown(id='numerai-model-picker',
+                                                options=[{'label': m, 'value': m} for m in numerai_models],
                                                 multi=True,
-                                                placeholder='Select models...')],
+                                                placeholder='Select numerai models...'),
+                                            dcc.Dropdown(id='signals-model-picker',
+                                                options=[{'label': m, 'value': m} for m in signals_models],
+                                                multi=True,
+                                                placeholder='Select signals models...')],
                                     className='column'),
                                 html.Div([
                                             dcc.Dropdown(id='currency-picker',
@@ -86,26 +96,42 @@ def init_dashboard(server):
                     Output('table', 'data'),
                     Output('user-df', 'data'),
                     Input('submit-button', 'n_clicks'),
-                    State('model-picker', 'value'),
+                    State('numerai-model-picker', 'value'),
+                    State('signals-model-picker', 'value'),
                     State('currency-picker', 'value'),
                     State('date-picker', 'start_date'),
                     State('date-picker', 'end_date'))
-    def calculate_payouts(n_clicks, model_list, currency, start, end):
+    def calculate_payouts(n_clicks, numerai_model_list, signals_model_list, currency, start, end):
 
-        if model_list is not None:
+        if numerai_model_list is not None or signals_model_list is not None:
 
             # round performances
             napi = numerapi.NumerAPI()
+            sapi = numerapi.SignalsAPI()
             to_concat = []
-            for model in model_list:
-                df = pd.DataFrame(napi.round_model_performances(model))
-                df['model'] = model
-                to_concat.append(df)
+
+            if numerai_model_list is not None:
+                for model in numerai_model_list:
+                    df = pd.DataFrame(napi.round_model_performances(model))
+                    df['model'] = model
+                    df['tourn'] = 'numerai'
+                    to_concat.append(df)
+
+            if signals_model_list is not None:
+                for model in signals_model_list:
+                    df = pd.DataFrame(sapi.round_model_performances(model))
+                    df['model'] = model
+                    df['tourn'] = 'signals'
+                    to_concat.append(df)
 
             df = pd.concat(to_concat)
 
             mapper = {
-               'model': 'Model', 'roundNumber': 'Round', 'payout': 'NMR Payout', 'roundResolveTime': 'Round Resolved'}
+               'model': 'Model',
+               'tourn': 'Tournament',
+               'roundNumber': 'Round',
+               'payout': 'NMR Payout',
+               'roundResolveTime': 'Round Resolved'}
 
             # select and rename columns
             df = df[[key for key in mapper]].rename(mapper, axis=1)
@@ -149,10 +175,23 @@ def init_dashboard(server):
             for col in [f'{currency}/NMR', f'{currency} Payout']:
                 df[col] = df[col].apply(lambda x: f"{round(x, 2):.2f}")
 
-            data = [go.Scatter(x=df[df['Model'] == m]['Round Resolved'],
-                                y=df[df['Model'] == m][f'{currency} Payout'],
-                                name=m,
-                                mode='lines') for m in model_list]
+
+            data = []
+
+            if numerai_model_list is not None:
+                numerai_data = [go.Scatter(x=df[(df['Model'] == m) & (df['Tournament'] == 'numerai')]['Round Resolved'],
+                                y=df[(df['Model'] == m) & (df['Tournament'] == 'numerai')][f'{currency} Payout'],
+                                name=f'{m} (numerai)',
+                                mode='lines') for m in numerai_model_list]
+                data += numerai_data
+
+            if signals_model_list is not None:
+                signals_data = [go.Scatter(x=df[(df['Model'] == m) & (df['Tournament'] == 'signals')]['Round Resolved'],
+                                y=df[(df['Model'] == m) & (df['Tournament'] == 'signals')][f'{currency} Payout'],
+                                name=f'{m} (signals)',
+                                mode='lines') for m in signals_model_list]
+                data += signals_data
+
             figure = {'data': data,
                         'layout': go.Layout(title=f'{currency} Payout', hovermode='closest')}
 
