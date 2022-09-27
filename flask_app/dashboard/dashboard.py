@@ -42,6 +42,15 @@ def init_dashboard(server):
     app.layout = html.Div([
                             html.Div([
                                 html.Div([
+                                    html.Article(
+                                        className='message',
+                                        children=[
+                                            html.Div('Update: Signals models are also now supported', hidden=False, className='message-body', style={'text-align': 'center'})
+                                        ]),
+                                    ],
+                                    className='column')], className='columns'),
+                            html.Div([
+                                html.Div([
                                             dcc.Dropdown(id='numerai-model-picker',
                                                 options=[{'label': m, 'value': m} for m in numerai_models],
                                                 multi=True,
