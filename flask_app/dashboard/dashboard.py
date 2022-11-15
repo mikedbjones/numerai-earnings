@@ -35,7 +35,7 @@ def init_dashboard(server):
     numerai_models.sort()
     signals_models.sort()
 
-    currencies = ['AUD', 'CAD', 'EUR', 'GBP', 'USD']
+    currencies = ['AUD', 'BTC', 'CAD', 'CNY', 'EUR', 'ETH', 'GBP', 'INR', 'JPY', 'KRW', 'RUB', 'USD']
 
     today = datetime.now()
 
@@ -43,9 +43,9 @@ def init_dashboard(server):
                             html.Div([
                                 html.Div([
                                     html.Article(
-                                        className='message',
+                                        className='message is-warning',
                                         children=[
-                                            html.Div('Update: Signals models are also now supported', hidden=False, className='message-body', style={'text-align': 'center'})
+                                            html.Div('Update: Added BTC, CNY, ETH, INR, JPY, KRW, RUB.', hidden=False, className='message-body', style={'text-align': 'center'})
                                         ]),
                                     ],
                                     className='column')], className='columns'),
