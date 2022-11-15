@@ -103,6 +103,7 @@ def init_dashboard(server):
                     Output('total-display-curr', 'children'),
                     Output('graph', 'figure'),
                     Output('table', 'data'),
+                    Output('table', 'columns'),
                     Output('user-df', 'data'),
                     Input('submit-button', 'n_clicks'),
                     State('numerai-model-picker', 'value'),
@@ -179,11 +180,34 @@ def init_dashboard(server):
             total_nmr = f"{round(df['NMR Payout'].sum(), 4):.4f}"
             total_curr = f"{round(df[f'{currency} Payout'].sum(), 2):.2f}"
 
-            df['NMR Payout'] = df['NMR Payout'].apply(lambda x: f"{round(x, 4):.4f}")
+            formatted = {'locale': {}, 'nully': '', 'prefix': None, 'specifier': '.2f'}
 
-            for col in [f'{currency}/NMR', f'{currency} Payout']:
-                df[col] = df[col].apply(lambda x: f"{round(x, 2):.2f}")
+            columns_2f = [col for col in df.columns if col in [
+                                                                f'{currency}/NMR',
+                                                                f'{currency} Payout',
+                                                                'NMR Payout']]
 
+            columns_other = [col for col in df.columns if col not in columns_2f]
+
+            table_columns_2f = [
+                                    {
+                                        "name": i,
+                                        "id": i,
+                                        "type": "numeric",
+                                        "format": formatted
+                                    }
+                                    for i in columns_2f
+                                ]
+
+            table_columns_other = [
+                                        {
+                                            "name": i,
+                                            "id": i
+                                        }
+                                        for i in columns_other
+                                    ]
+
+            table_columns = table_columns_other + table_columns_2f
 
             data = []
 
@@ -204,10 +228,12 @@ def init_dashboard(server):
             figure = {'data': data,
                         'layout': go.Layout(title=f'{currency} Payout', hovermode='closest')}
 
-            return f"NMR: {total_nmr}", f"{currency}: {total_curr}", figure, df.to_dict('records'), df.to_json(date_format='iso', orient='split')
+            print(df.head(1))
+            print(table_columns)
+            return f"NMR: {total_nmr}", f"{currency}: {total_curr}", figure, df.to_dict('records'), table_columns, df.to_json(date_format='iso', orient='split')
 
         else:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     @app.callback(
                     Output('download-df', 'data'),
