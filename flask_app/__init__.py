@@ -1,8 +1,12 @@
 from flask import Flask
+from flask_talisman import Talisman
 
 def init_app():
     """Construct core Flask application with embedded Dash app."""
     app = Flask(__name__, instance_relative_config=False)
+
+    # Wrap Flask app with Talisman (enforce SSL)
+    Talisman(app, content_security_policy=None)
 
     with app.app_context():
 
