@@ -88,7 +88,7 @@ def init_dashboard(server):
                                                             className='box is-size-3',
                                                             style={'text-align': 'center'}), className='column')],
                                                 className='columns is-centered'),
-                                html.Div(dcc.Graph(id='graph'), className='block'),
+                                dcc.Loading(id='graph-holder', className='block'),
                                 html.Div(dash_table.DataTable(
                                                                 id='table',
                                                                 sort_action='native'), className='block'),
@@ -101,7 +101,7 @@ def init_dashboard(server):
     @app.callback(
                     Output('total-display-nmr', 'children'),
                     Output('total-display-curr', 'children'),
-                    Output('graph', 'figure'),
+                    Output('graph-holder', 'children'),
                     Output('table', 'data'),
                     Output('table', 'columns'),
                     Output('user-df', 'data'),
@@ -228,9 +228,11 @@ def init_dashboard(server):
             figure = {'data': data,
                         'layout': go.Layout(title=f'{currency} Payout', hovermode='closest')}
 
+            graph = dcc.Graph(figure=figure)
+
             print(df.head(1))
             print(table_columns)
-            return f"NMR: {total_nmr}", f"{currency}: {total_curr}", figure, df.to_dict('records'), table_columns, df.to_json(date_format='iso', orient='split')
+            return f"NMR: {total_nmr}", f"{currency}: {total_curr}", graph, df.to_dict('records'), table_columns, df.to_json(date_format='iso', orient='split')
 
         else:
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
